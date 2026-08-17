@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.kapture.live-dashboard.ui</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/obulappagari.naveen/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node</string>
+    <string>/Users/obulappagari.naveen/.kapture-live-dashboard/server.js</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PORT</key>
+    <string>3335</string>
+    <key>HOST</key>
+    <string>127.0.0.1</string>
+  </dict>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/obulappagari.naveen/.kapture-live-dashboard</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/kapture-live-dashboard-ui.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/tmp/kapture-live-dashboard-ui.err.log</string>
+</dict>
+</plist>

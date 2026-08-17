@@ -1,0 +1,13 @@
+{
+  "name": "kapture-live-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Live Kapture ticket dashboard with CSV exports.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

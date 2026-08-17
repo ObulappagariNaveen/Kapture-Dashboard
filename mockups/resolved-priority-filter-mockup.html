@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Resolved Priority Filter Mockup</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #eef3f5;
+        --surface: #ffffff;
+        --ink: #17212b;
+        --muted: #697786;
+        --blue: #5b9bea;
+        --green: #6db87c;
+        --yellow: #f5bd4d;
+        --red: #e8655c;
+        --line: #dde6ea;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        letter-spacing: 0;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      .shell {
+        width: min(1120px, 100%);
+        margin: 0 auto;
+        background: #fff;
+        min-height: 100vh;
+      }
+
+      .filter-block {
+        position: relative;
+        border-bottom: 10px solid #e5edf1;
+        background: var(--surface);
+      }
+
+      .filter-button {
+        width: 100%;
+        min-height: 116px;
+        border: 0;
+        background: transparent;
+        color: var(--ink);
+        cursor: pointer;
+        padding: 18px 20px;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .filter-label {
+        display: block;
+        color: var(--muted);
+        font-size: clamp(20px, 2.4vw, 28px);
+        line-height: 1.1;
+      }
+
+      .filter-value {
+        display: block;
+        margin-top: 6px;
+        font-size: clamp(24px, 3vw, 34px);
+        font-weight: 850;
+        line-height: 1.1;
+      }
+
+      .chevron {
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        background: #edf5fb;
+        color: var(--muted);
+        display: grid;
+        place-items: center;
+        font-size: 24px;
+        font-weight: 900;
+      }
+
+      .menu {
+        position: absolute;
+        z-index: 10;
+        top: calc(100% - 10px);
+        right: 16px;
+        left: 16px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 18px 50px rgba(29, 43, 58, 0.18);
+      }
+
+      .menu[hidden] {
+        display: none;
+      }
+
+      .range-options {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .range-options button,
+      .apply-button {
+        min-height: 46px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--ink);
+        cursor: pointer;
+        font-weight: 800;
+      }
+
+      .range-options button.active,
+      .apply-button {
+        border-color: #255fd7;
+        background: #255fd7;
+        color: #fff;
+      }
+
+      .custom-fields {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+      }
+
+      .custom-fields label {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 850;
+        text-transform: uppercase;
+      }
+
+      .custom-fields input {
+        min-width: 0;
+        height: 44px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 10px;
+      }
+
+      .apply-button {
+        grid-column: 1 / -1;
+      }
+
+      .agent-list {
+        display: grid;
+        gap: 12px;
+        max-height: 360px;
+        overflow: auto;
+      }
+
+      .agent-row {
+        min-height: 42px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--ink);
+        font-size: 16px;
+        font-weight: 800;
+      }
+
+      .agent-row input {
+        width: 20px;
+        height: 20px;
+        accent-color: #255fd7;
+      }
+
+      .total-section {
+        min-height: 300px;
+        border-bottom: 10px solid #e5edf1;
+        display: grid;
+        place-items: center;
+        text-align: center;
+        padding: 36px 20px;
+      }
+
+      .total-section span {
+        color: var(--muted);
+        font-size: clamp(28px, 3vw, 38px);
+      }
+
+      .total-section strong {
+        display: block;
+        margin-top: 18px;
+        font-size: clamp(78px, 11vw, 118px);
+        line-height: 0.9;
+      }
+
+      .total-section small {
+        display: block;
+        margin-top: 22px;
+        color: var(--green);
+        font-size: clamp(26px, 3vw, 34px);
+        font-weight: 900;
+      }
+
+      .priority-section {
+        padding: 42px 20px 56px;
+      }
+
+      .priority-section h1 {
+        margin: 0;
+        font-size: clamp(34px, 4.3vw, 48px);
+        line-height: 1.05;
+      }
+
+      .view-line {
+        margin: 24px 0 42px;
+        color: var(--muted);
+        font-size: clamp(24px, 3vw, 34px);
+      }
+
+      .view-line strong {
+        color: #255fd7;
+      }
+
+      .priority-layout {
+        display: grid;
+        grid-template-columns: minmax(300px, 640px) minmax(220px, 1fr);
+        gap: 30px;
+        align-items: center;
+      }
+
+      .donut {
+        width: min(620px, 86vw);
+        aspect-ratio: 1;
+        margin: 0 auto;
+        border-radius: 50%;
+        background:
+          radial-gradient(circle, #fff 0 36%, transparent 37%),
+          conic-gradient(
+            var(--blue) 0 61%,
+            var(--green) 61% 84%,
+            var(--yellow) 84% 95%,
+            var(--red) 95% 100%
+          );
+        display: grid;
+        place-items: center;
+      }
+
+      .donut-center {
+        text-align: center;
+      }
+
+      .donut-center strong {
+        display: block;
+        font-size: clamp(56px, 8vw, 82px);
+        line-height: 1;
+      }
+
+      .donut-center span {
+        display: block;
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: clamp(22px, 3vw, 30px);
+      }
+
+      .legend {
+        display: grid;
+        gap: 16px;
+      }
+
+      .legend-row {
+        display: grid;
+        grid-template-columns: 18px minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: center;
+        font-size: 17px;
+      }
+
+      .swatch {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+      }
+
+      .legend-name {
+        overflow: hidden;
+        font-weight: 800;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .legend-value {
+        color: var(--muted);
+        font-weight: 800;
+      }
+
+      @media (max-width: 860px) {
+        .priority-layout,
+        .custom-fields {
+          grid-template-columns: 1fr;
+        }
+
+        .legend {
+          max-width: 620px;
+          margin: 0 auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="filter-block">
+        <button class="filter-button" id="dateTrigger" type="button">
+          <span>
+            <span class="filter-label">Date Range</span>
+            <span class="filter-value" id="dateValue">This Week</span>
+          </span>
+          <span class="chevron">v</span>
+        </button>
+        <div class="menu" id="dateMenu" hidden>
+          <div class="range-options">
+            <button data-range="Today" type="button">Today</button>
+            <button data-range="Yesterday" type="button">Yesterday</button>
+            <button class="active" data-range="This Week" type="button">This Week</button>
+            <button data-range="This Month" type="button">This Month</button>
+            <button data-range="Custom Date & Time" type="button">Custom Date & Time</button>
+          </div>
+          <div class="custom-fields" id="customFields" hidden>
+            <label>
+              Start Date & Time
+              <input type="datetime-local" value="2026-06-01T00:00">
+            </label>
+            <label>
+              End Date & Time
+              <input type="datetime-local" value="2026-06-18T23:59">
+            </label>
+            <button class="apply-button" id="applyCustom" type="button">Apply Custom</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="filter-block">
+        <button class="filter-button" id="agentTrigger" type="button">
+          <span>
+            <span class="filter-label">Agent Name</span>
+            <span class="filter-value" id="agentValue">All teammates</span>
+          </span>
+          <span class="chevron">v</span>
+        </button>
+        <div class="menu" id="agentMenu" hidden>
+          <div class="agent-list" id="agentList"></div>
+        </div>
+      </section>
+
+      <section class="total-section">
+        <div>
+          <span>Tickets resolved</span>
+          <strong id="resolvedTotal">403</strong>
+          <small id="rangeCaption">Selected range</small>
+        </div>
+      </section>
+
+      <section class="priority-section">
+        <h1>Tickets resolved by priority</h1>
+        <p class="view-line">View: <strong id="viewLabel">All teammates</strong></p>
+
+        <div class="priority-layout">
+          <div class="donut">
+            <div class="donut-center">
+              <strong id="donutTotal">403</strong>
+              <span>resolved</span>
+            </div>
+          </div>
+
+          <div class="legend" id="legend"></div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const agents = [
+        { name: "Unassigned", resolved: 40 },
+        { name: "Vivek S Babu", resolved: 5 },
+        { name: "Shashwat Yadav", resolved: 4 },
+        { name: "Rachita Srichandan", resolved: 3 },
+        { name: "Obulappagari Naveen Kumar", resolved: 3 },
+        { name: "Aniket Bhasme", resolved: 2 },
+        { name: "Stephen Raj", resolved: 2 },
+        { name: "Sabbarapu Nivas", resolved: 1 },
+        { name: "Meesho Valmo Tech", resolved: 1 },
+        { name: "Sowmiya P", resolved: 1 }
+      ];
+
+      const priorities = {
+        all: [
+          ["Low priority", 250, "var(--blue)"],
+          ["Medium priority", 93, "var(--green)"],
+          ["High priority", 40, "var(--yellow)"],
+          ["Urgent", 20, "var(--red)"]
+        ],
+        selected: [
+          ["Low priority", 18, "var(--blue)"],
+          ["Medium priority", 9, "var(--green)"],
+          ["High priority", 5, "var(--yellow)"],
+          ["Urgent", 1, "var(--red)"]
+        ]
+      };
+
+      const selectedAgents = new Set(["__all"]);
+      const elements = {
+        dateTrigger: document.querySelector("#dateTrigger"),
+        dateMenu: document.querySelector("#dateMenu"),
+        dateValue: document.querySelector("#dateValue"),
+        customFields: document.querySelector("#customFields"),
+        applyCustom: document.querySelector("#applyCustom"),
+        agentTrigger: document.querySelector("#agentTrigger"),
+        agentMenu: document.querySelector("#agentMenu"),
+        agentValue: document.querySelector("#agentValue"),
+        agentList: document.querySelector("#agentList"),
+        resolvedTotal: document.querySelector("#resolvedTotal"),
+        donutTotal: document.querySelector("#donutTotal"),
+        viewLabel: document.querySelector("#viewLabel"),
+        legend: document.querySelector("#legend"),
+        rangeCaption: document.querySelector("#rangeCaption")
+      };
+
+      elements.dateTrigger.addEventListener("click", () => toggle(elements.dateMenu));
+      elements.agentTrigger.addEventListener("click", () => toggle(elements.agentMenu));
+
+      for (const button of document.querySelectorAll("[data-range]")) {
+        button.addEventListener("click", () => {
+          for (const item of document.querySelectorAll("[data-range]")) item.classList.remove("active");
+          button.classList.add("active");
+          const value = button.dataset.range;
+          elements.customFields.hidden = value !== "Custom Date & Time";
+          if (value !== "Custom Date & Time") {
+            elements.dateValue.textContent = value;
+            elements.rangeCaption.textContent = value;
+            elements.dateMenu.hidden = true;
+          }
+        });
+      }
+
+      elements.applyCustom.addEventListener("click", () => {
+        elements.dateValue.textContent = "Custom Date & Time";
+        elements.rangeCaption.textContent = "Custom range";
+        elements.dateMenu.hidden = true;
+      });
+
+      renderAgentMenu();
+      render();
+
+      function toggle(menu) {
+        menu.hidden = !menu.hidden;
+      }
+
+      function renderAgentMenu() {
+        elements.agentList.replaceChildren();
+        elements.agentList.append(agentRow("All teammates", "__all", selectedAgents.has("__all")));
+        for (const agent of agents) {
+          elements.agentList.append(agentRow(agent.name, agent.name, selectedAgents.has(agent.name)));
+        }
+      }
+
+      function agentRow(label, value, checked) {
+        const row = document.createElement("label");
+        row.className = "agent-row";
+        row.innerHTML = `<input type="checkbox" value="${escapeHtml(value)}" ${checked ? "checked" : ""}> ${escapeHtml(label)}`;
+        row.querySelector("input").addEventListener("change", () => {
+          if (value === "__all") {
+            selectedAgents.clear();
+            selectedAgents.add("__all");
+          } else {
+            selectedAgents.delete("__all");
+            if (selectedAgents.has(value)) selectedAgents.delete(value);
+            else selectedAgents.add(value);
+            if (!selectedAgents.size) selectedAgents.add("__all");
+          }
+          renderAgentMenu();
+          render();
+        });
+        return row;
+      }
+
+      function selectedAgentRows() {
+        if (selectedAgents.has("__all")) return agents;
+        return agents.filter((agent) => selectedAgents.has(agent.name));
+      }
+
+      function render() {
+        const selected = selectedAgentRows();
+        const total = selectedAgents.has("__all")
+          ? 403
+          : selected.reduce((sum, agent) => sum + agent.resolved, 0);
+        const label = selectedAgents.has("__all")
+          ? "All teammates"
+          : selected.length === 1
+            ? selected[0].name
+            : `${selected.length} teammates selected`;
+
+        elements.agentValue.textContent = label;
+        elements.viewLabel.textContent = label;
+        elements.resolvedTotal.textContent = format(total);
+        elements.donutTotal.textContent = format(total);
+        renderLegend(total, selectedAgents.has("__all") ? priorities.all : priorities.selected);
+      }
+
+      function renderLegend(total, rows) {
+        elements.legend.replaceChildren();
+        const adjustedRows = rows.map((row) => {
+          if (rows === priorities.all) return row;
+          const share = row[1] / priorities.selected.reduce((sum, item) => sum + item[1], 0);
+          return [row[0], Math.round(total * share), row[2]];
+        });
+
+        for (const [name, value, color] of adjustedRows) {
+          const percent = total ? ((value / total) * 100).toFixed(value / total > 0.1 ? 0 : 1) : "0";
+          const item = document.createElement("div");
+          item.className = "legend-row";
+          item.innerHTML = `
+            <span class="swatch" style="background:${color}"></span>
+            <span class="legend-name">${escapeHtml(name)}</span>
+            <span class="legend-value">${format(value)} (${percent}%)</span>
+          `;
+          elements.legend.append(item);
+        }
+      }
+
+      function format(value) {
+        return new Intl.NumberFormat("en-IN").format(value);
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+    </script>
+  </body>
+</html>

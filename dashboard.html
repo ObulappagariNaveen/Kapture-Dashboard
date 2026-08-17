@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kapture Live Ticket Dashboard</title>
+    <link rel="stylesheet" href="/assets/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Kapture support</p>
+          <h1>Operations dashboard</h1>
+        </div>
+        <div class="status-pill" id="statusPill">
+          <span class="status-dot"></span>
+          <span id="statusText">Connecting</span>
+        </div>
+      </header>
+
+      <section class="priority-filter-stack" aria-label="Dashboard filters">
+        <div class="filter-block">
+          <button class="filter-trigger" id="dateRangeTrigger" type="button">
+            <span>
+              <span class="filter-label">Date Range</span>
+              <span class="filter-value" id="dateRangeValue">Select range</span>
+            </span>
+            <span class="filter-chevron">v</span>
+          </button>
+          <div class="filter-menu" id="dateRangeMenu" hidden>
+            <div class="range-options">
+              <button type="button" data-range="today">Today</button>
+              <button type="button" data-range="yesterday">Yesterday</button>
+              <button type="button" data-range="week">This Week</button>
+              <button type="button" data-range="month">This Month</button>
+              <button type="button" data-range="custom">Custom Date & Time</button>
+            </div>
+            <div class="custom-fields" id="customDateFields" hidden>
+              <label>
+                <span>Start Date & Time</span>
+                <input type="datetime-local" id="customStartDate">
+              </label>
+              <label>
+                <span>End Date & Time</span>
+                <input type="datetime-local" id="customEndDate">
+              </label>
+              <button class="button" type="button" id="applyCustomRange">Apply Custom</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="filter-block">
+          <button class="filter-trigger" id="agentTrigger" type="button">
+            <span>
+              <span class="filter-label">Agent Name</span>
+              <span class="filter-value" id="agentValue">All teammates</span>
+            </span>
+            <span class="filter-chevron">v</span>
+          </button>
+          <div class="filter-menu" id="agentMenu" hidden>
+            <div class="agent-list" id="agentList"></div>
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button type="button" id="refreshButton">Refresh</button>
+          <details class="export-menu">
+            <summary>Export</summary>
+            <div>
+              <a id="dailyCsv" href="/api/export/daily.csv">Daily CSV</a>
+              <a id="createdCsv" href="/api/export/created.csv">Created CSV</a>
+              <a id="teamCsv" href="/api/export/team.csv">Team CSV</a>
+              <a id="pendingCsv" href="/api/export/pending.csv">Pending CSV</a>
+              <a id="resolvedCsv" href="/api/export/resolved.csv">Resolved CSV</a>
+            </div>
+          </details>
+        </div>
+
+        <div hidden>
+          <input id="startDate">
+          <input id="endDate">
+          <input id="queueName">
+          <input id="creatorName">
+          <input id="titlePrefix">
+          <input id="titleContains">
+        </div>
+      </section>
+
+      <section class="metric-grid" aria-label="Ticket metrics">
+        <article class="metric-card">
+          <span>Created</span>
+          <strong id="createdMetric">0</strong>
+          <small id="createdMetricHelp">tickets in range</small>
+        </article>
+        <article class="metric-card">
+          <span>Resolved</span>
+          <strong id="resolvedMetric">0</strong>
+          <small id="resolvedMetricHelp">using taskEnddate</small>
+        </article>
+        <article class="metric-card accent">
+          <span>Pending</span>
+          <strong id="pendingMetric">0</strong>
+          <small id="pendingMetricHelp">current open items</small>
+        </article>
+        <article class="metric-card">
+          <span>Open backlog</span>
+          <strong id="backlogMetric">0</strong>
+          <small id="backlogMetricHelp">from fetched range</small>
+        </article>
+      </section>
+
+      <section class="insight-grid">
+        <section class="panel team-resolved-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Teammate summary</p>
+              <h2>Resolved by teammate</h2>
+            </div>
+            <span id="teamResolvedCountLabel">0 teammates</span>
+          </div>
+          <div class="team-resolved-chart">
+            <div class="teammate-donut" id="teamResolvedDonut">
+              <strong id="teamResolvedTotal">0</strong>
+            </div>
+            <div class="teammate-legend-wrap">
+              <div class="teammate-legend" id="teamResolvedList"></div>
+              <div class="legend-pager" id="teamResolvedPager" hidden>
+                <button class="pager-button" id="teamResolvedPrev" type="button" aria-label="Previous teammates">▲</button>
+                <span id="teamResolvedPageLabel">1/1</span>
+                <button class="pager-button active" id="teamResolvedNext" type="button" aria-label="Next teammates">▼</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="table-band">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Ticket details</p>
+            <h2 id="ticketDetailsTitle">Pending tickets</h2>
+          </div>
+          <span id="ticketDetailsCountLabel">0 tickets</span>
+        </div>
+        <div class="ticket-tools">
+          <div class="tab-row" aria-label="Ticket detail views">
+            <button class="tab-button active" type="button" id="pendingTabButton" data-open-work-tab="pending">Pending</button>
+            <button class="tab-button" type="button" id="resolvedTabButton" data-open-work-tab="resolved">Resolved</button>
+          </div>
+          <label class="search-field">
+            <span>Search tickets</span>
+            <input id="ticketSearch" type="search" placeholder="Ticket ID or title">
+          </label>
+        </div>
+
+        <div class="open-work-panel" id="pendingPanel">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ticket</th>
+                  <th>Created</th>
+                  <th>Queue</th>
+                  <th>Creator</th>
+                  <th>Assigned</th>
+                  <th>Status</th>
+                  <th>Title</th>
+                </tr>
+              </thead>
+              <tbody id="pendingBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="open-work-panel" id="resolvedPanel" hidden>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ticket</th>
+                  <th>Resolved</th>
+                  <th>Resolved by</th>
+                  <th>Priority</th>
+                  <th>Queue</th>
+                  <th>Status</th>
+                  <th>Title</th>
+                </tr>
+              </thead>
+              <tbody id="resolvedDetailsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="message-band" id="messageBand" hidden>
+        <strong id="messageTitle">No data</strong>
+        <p id="messageText"></p>
+      </section>
+    </main>
+
+    <script src="/assets/app.js" type="module"></script>
+  </body>
+</html>

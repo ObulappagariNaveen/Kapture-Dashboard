@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Team Summary Filter Mockup</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4f6f1;
+        --surface: #ffffff;
+        --ink: #17212b;
+        --muted: #66727c;
+        --line: #d8ded7;
+        --teal: #087f8c;
+        --gold: #d59f2f;
+        --shadow: 0 16px 42px rgba(34, 45, 48, 0.09);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        letter-spacing: 0;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      .shell {
+        width: min(1500px, 100%);
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .filter-bar {
+        display: grid;
+        grid-template-columns: minmax(260px, 1fr) minmax(320px, 1fr);
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+
+      .filter {
+        position: relative;
+        min-height: 68px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .filter-trigger {
+        width: 100%;
+        height: 68px;
+        border: 0;
+        background: transparent;
+        color: var(--ink);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 18px;
+        text-align: left;
+      }
+
+      .filter-label {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .filter-value {
+        display: block;
+        margin-top: 4px;
+        font-size: 18px;
+        font-weight: 800;
+      }
+
+      .chevron {
+        color: var(--muted);
+        font-size: 18px;
+      }
+
+      .menu {
+        position: absolute;
+        z-index: 10;
+        top: calc(100% + 8px);
+        right: 0;
+        left: 0;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: var(--shadow);
+      }
+
+      .menu[hidden] {
+        display: none;
+      }
+
+      .quick-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .quick-grid button,
+      .apply-button {
+        min-height: 40px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--ink);
+        cursor: pointer;
+        font-weight: 750;
+      }
+
+      .quick-grid button.active,
+      .apply-button {
+        border-color: var(--teal);
+        background: var(--teal);
+        color: #fff;
+      }
+
+      .custom-range {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+      }
+
+      .custom-range label {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .custom-range input {
+        width: 100%;
+        min-width: 0;
+        height: 40px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 10px;
+      }
+
+      .apply-button {
+        grid-column: 1 / -1;
+      }
+
+      .agent-list {
+        display: grid;
+        gap: 10px;
+        max-height: 340px;
+        overflow: auto;
+      }
+
+      .check-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 34px;
+        color: var(--ink);
+        font-weight: 750;
+      }
+
+      .check-row input {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--teal);
+      }
+
+      .heading {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
+      }
+
+      .eyebrow {
+        margin: 0 0 4px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 850;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: 32px;
+      }
+
+      .count-label {
+        color: var(--muted);
+        font-size: 16px;
+        font-weight: 750;
+      }
+
+      .team-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
+      }
+
+      .team-card,
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: var(--shadow);
+      }
+
+      .team-card {
+        min-height: 150px;
+        padding: 16px;
+        display: grid;
+        gap: 14px;
+      }
+
+      .team-card h3 {
+        overflow: hidden;
+        font-size: 19px;
+        line-height: 1.2;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .team-card span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-weight: 800;
+      }
+
+      .team-card dl {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin: 0;
+      }
+
+      .team-card dt {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 850;
+        text-transform: uppercase;
+      }
+
+      .team-card dd {
+        margin: 5px 0 0;
+        font-size: 33px;
+        font-weight: 900;
+        line-height: 1;
+      }
+
+      .leaderboard-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 18px;
+      }
+
+      .panel {
+        min-height: 260px;
+        padding: 18px;
+      }
+
+      .panel h2 {
+        margin-bottom: 16px;
+        font-size: 20px;
+      }
+
+      .rank-list {
+        display: grid;
+        gap: 13px;
+      }
+
+      .rank-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .rank-name {
+        overflow: hidden;
+        font-weight: 850;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .rank-value {
+        color: var(--muted);
+        font-weight: 800;
+      }
+
+      .bar-track {
+        grid-column: 1 / -1;
+        height: 8px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #edf1ee;
+      }
+
+      .bar-fill {
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--teal), var(--gold));
+      }
+
+      @media (max-width: 900px) {
+        .filter-bar,
+        .leaderboard-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .custom-range {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="filter-bar">
+        <div class="filter">
+          <button class="filter-trigger" id="dateTrigger" type="button">
+            <span>
+              <span class="filter-label">Date range</span>
+              <span class="filter-value" id="dateValue">This week</span>
+            </span>
+            <span class="chevron">v</span>
+          </button>
+          <div class="menu" id="dateMenu" hidden>
+            <div class="quick-grid">
+              <button class="active" data-range="Today" type="button">Today</button>
+              <button data-range="Yesterday" type="button">Yesterday</button>
+              <button data-range="This week" type="button">This week</button>
+              <button data-range="This month" type="button">This month</button>
+              <button data-range="Custom" type="button">Custom date/time</button>
+            </div>
+            <div class="custom-range" id="customRange" hidden>
+              <label>
+                Start
+                <input type="datetime-local" value="2026-06-01T00:00">
+              </label>
+              <label>
+                End
+                <input type="datetime-local" value="2026-06-18T23:59">
+              </label>
+              <button class="apply-button" id="applyCustom" type="button">Apply custom range</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="filter">
+          <button class="filter-trigger" id="agentTrigger" type="button">
+            <span>
+              <span class="filter-label">Agent name</span>
+              <span class="filter-value" id="agentValue">All teammates</span>
+            </span>
+            <span class="chevron">v</span>
+          </button>
+          <div class="menu" id="agentMenu" hidden>
+            <div class="agent-list" id="agentList"></div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="heading">
+          <div>
+            <p class="eyebrow">Team performance</p>
+            <h1>Teammate summary</h1>
+          </div>
+          <span class="count-label" id="countLabel">0 teammates</span>
+        </div>
+
+        <div class="team-summary-grid" id="teamGrid"></div>
+
+        <div class="leaderboard-grid">
+          <div class="panel">
+            <h2>Top attempted</h2>
+            <div class="rank-list" id="attemptedList"></div>
+          </div>
+          <div class="panel">
+            <h2>Top solved</h2>
+            <div class="rank-list" id="solvedList"></div>
+          </div>
+          <div class="panel">
+            <h2>Highest open</h2>
+            <div class="rank-list" id="openList"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const teammates = [
+        { name: "Unassigned", attempted: 396, solved: 40, open: 355 },
+        { name: "Vivek S Babu", attempted: 81, solved: 5, open: 0 },
+        { name: "Shashwat Yadav", attempted: 33, solved: 4, open: 0 },
+        { name: "Rachita Srichandan", attempted: 98, solved: 3, open: 1 },
+        { name: "Obulappagari Naveen Kumar", attempted: 3, solved: 3, open: 0 },
+        { name: "Aniket Bhasme", attempted: 3, solved: 2, open: 0 },
+        { name: "Stephen Raj", attempted: 3, solved: 2, open: 0 },
+        { name: "Sabbarapu Nivas", attempted: 14, solved: 1, open: 3 },
+        { name: "Meesho Valmo Tech", attempted: 3, solved: 1, open: 0 },
+        { name: "Sowmiya P", attempted: 1, solved: 1, open: 0 }
+      ];
+
+      const selected = new Set(["__all"]);
+      const elements = {
+        dateTrigger: document.querySelector("#dateTrigger"),
+        dateMenu: document.querySelector("#dateMenu"),
+        dateValue: document.querySelector("#dateValue"),
+        customRange: document.querySelector("#customRange"),
+        applyCustom: document.querySelector("#applyCustom"),
+        agentTrigger: document.querySelector("#agentTrigger"),
+        agentMenu: document.querySelector("#agentMenu"),
+        agentValue: document.querySelector("#agentValue"),
+        agentList: document.querySelector("#agentList"),
+        countLabel: document.querySelector("#countLabel"),
+        teamGrid: document.querySelector("#teamGrid"),
+        attemptedList: document.querySelector("#attemptedList"),
+        solvedList: document.querySelector("#solvedList"),
+        openList: document.querySelector("#openList")
+      };
+
+      elements.dateTrigger.addEventListener("click", () => toggle(elements.dateMenu));
+      elements.agentTrigger.addEventListener("click", () => toggle(elements.agentMenu));
+
+      for (const button of document.querySelectorAll("[data-range]")) {
+        button.addEventListener("click", () => {
+          for (const item of document.querySelectorAll("[data-range]")) item.classList.remove("active");
+          button.classList.add("active");
+          const value = button.dataset.range;
+          elements.customRange.hidden = value !== "Custom";
+          if (value !== "Custom") {
+            elements.dateValue.textContent = value;
+            elements.dateMenu.hidden = true;
+          }
+        });
+      }
+
+      elements.applyCustom.addEventListener("click", () => {
+        elements.dateValue.textContent = "Custom date/time";
+        elements.dateMenu.hidden = true;
+      });
+
+      renderAgentMenu();
+      render();
+
+      function toggle(menu) {
+        menu.hidden = !menu.hidden;
+      }
+
+      function renderAgentMenu() {
+        elements.agentList.replaceChildren();
+        const allRow = checkboxRow("All teammates", "__all", selected.has("__all"));
+        elements.agentList.append(allRow);
+        for (const teammate of teammates) {
+          elements.agentList.append(checkboxRow(teammate.name, teammate.name, selected.has(teammate.name)));
+        }
+      }
+
+      function checkboxRow(label, value, checked) {
+        const row = document.createElement("label");
+        row.className = "check-row";
+        row.innerHTML = `<input type="checkbox" value="${escapeHtml(value)}" ${checked ? "checked" : ""}> ${escapeHtml(label)}`;
+        const input = row.querySelector("input");
+        input.addEventListener("change", () => {
+          if (value === "__all") {
+            selected.clear();
+            selected.add("__all");
+          } else {
+            selected.delete("__all");
+            if (input.checked) selected.add(value);
+            else selected.delete(value);
+            if (!selected.size) selected.add("__all");
+          }
+          renderAgentMenu();
+          render();
+        });
+        return row;
+      }
+
+      function filteredRows() {
+        if (selected.has("__all")) return teammates;
+        return teammates.filter((item) => selected.has(item.name));
+      }
+
+      function render() {
+        const rows = filteredRows();
+        elements.agentValue.textContent = selected.has("__all")
+          ? "All teammates"
+          : rows.length === 1
+            ? rows[0].name
+            : `${rows.length} teammates selected`;
+        elements.countLabel.textContent = `${rows.length} teammate${rows.length === 1 ? "" : "s"}`;
+        renderCards(rows);
+        renderRank(elements.attemptedList, [...rows].sort((a, b) => b.attempted - a.attempted), "attempted");
+        renderRank(elements.solvedList, [...rows].sort((a, b) => b.solved - a.solved), "solved");
+        renderRank(elements.openList, [...rows].sort((a, b) => b.open - a.open), "open");
+      }
+
+      function renderCards(rows) {
+        elements.teamGrid.replaceChildren();
+        for (const row of rows) {
+          const rate = row.attempted ? Math.round((row.solved / row.attempted) * 100) : 0;
+          const card = document.createElement("article");
+          card.className = "team-card";
+          card.innerHTML = `
+            <div>
+              <h3>${escapeHtml(row.name)}</h3>
+              <span>${rate}% solve rate</span>
+            </div>
+            <dl>
+              <div><dt>Attempted</dt><dd>${format(row.attempted)}</dd></div>
+              <div><dt>Solved</dt><dd>${format(row.solved)}</dd></div>
+              <div><dt>Open</dt><dd>${format(row.open)}</dd></div>
+            </dl>
+          `;
+          elements.teamGrid.append(card);
+        }
+      }
+
+      function renderRank(container, rows, metric) {
+        container.replaceChildren();
+        const visible = rows.filter((row) => row[metric] > 0).slice(0, 6);
+        const max = Math.max(...visible.map((row) => row[metric]), 1);
+        for (const row of visible) {
+          const item = document.createElement("div");
+          item.className = "rank-row";
+          item.innerHTML = `
+            <div class="rank-name">${escapeHtml(row.name)}</div>
+            <div class="rank-value">${format(row[metric])}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${(row[metric] / max) * 100}%"></div></div>
+          `;
+          container.append(item);
+        }
+      }
+
+      function format(value) {
+        return new Intl.NumberFormat("en-IN").format(value);
+      }
+
+      function escapeHtml(value) {
+        return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+      }
+    </script>
+  </body>
+</html>
