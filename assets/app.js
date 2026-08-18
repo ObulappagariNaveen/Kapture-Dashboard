@@ -81,7 +81,7 @@ function boot() {
     button.addEventListener("click", () => chooseDateRange(button.dataset.range));
   }
 
-  elements.refreshButton.addEventListener("click", () => loadDashboard());
+  elements.refreshButton.addEventListener("click", () => loadDashboard({ forceRefresh: true }));
   elements.ticketSearch.addEventListener("input", () => renderOpenWork(currentPayload));
   elements.teamResolvedPrev.addEventListener("click", () => changeTeamResolvedPage(-1));
   elements.teamResolvedNext.addEventListener("click", () => changeTeamResolvedPage(1));
@@ -108,7 +108,7 @@ function filterInputs() {
   ];
 }
 
-async function loadDashboard() {
+async function loadDashboard(options = {}) {
   const loadId = currentLoadId + 1;
   currentLoadId = loadId;
 
@@ -120,6 +120,7 @@ async function loadDashboard() {
   }
 
   const params = currentParams();
+  if (options.forceRefresh) params.set("refresh", "1");
   params.set("_", String(Date.now()));
   const query = params.toString();
   setStatus("loading", "Refreshing");

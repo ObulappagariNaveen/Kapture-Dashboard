@@ -25,6 +25,7 @@ const PERFORMANCE_TIMEOUT_MS = clampNumber(Number(process.env.KAPTURE_PERFORMANC
 const CREATED_SUPPLEMENT_TIMEOUT_MS = clampNumber(Number(process.env.KAPTURE_CREATED_SUPPLEMENT_TIMEOUT_MS || 12_000), 2_000, 60_000);
 const CREATED_SUPPLEMENT_MAX_PAGES = clampNumber(Number(process.env.KAPTURE_CREATED_SUPPLEMENT_MAX_PAGES || 10), 1, 100);
 const PAGE_CONCURRENCY = clampNumber(Number(process.env.KAPTURE_PAGE_CONCURRENCY || 12), 1, 12);
+const CACHE_SCHEMA_VERSION = "2026-08-18-resolved-refresh-v1";
 const STATUS_CACHE_DIR = path.join(__dirname, "logs", "status-cache");
 const cache = new Map();
 const statusCache = new Map();
@@ -157,10 +158,11 @@ function getHealth() {
 async function getDashboardData(searchParams, options = {}) {
   const range = getDateRange(searchParams);
   const detailMode = options.detailMode || cleanFilter(searchParams.get("detailMode")) || "fast";
+  const forceRefresh = options.forceRefresh || searchParams.get("refresh") === "1";
   const fetchRange = getActivityFetchRange(range, detailMode);
   const filters = getFilters(searchParams);
   const [tickets, performanceResult] = await Promise.all([
-    fetchTickets(fetchRange),
+    fetchTickets(fetchRange, { forceRefresh }),
     fetchPerformanceTotals(range).then((totals) => ({ totals, error: "" })).catch((error) => {
       console.warn(`Performance totals unavailable: ${sanitizeError(error)}`);
       return { totals: null, error: sanitizeError(error) };
@@ -180,6 +182,9 @@ async function getDashboardData(searchParams, options = {}) {
     filters,
     rawCount: tickets.length,
     filteredCount: filteredTickets.length,
+    fetchStatusCounts: countBy(tickets, "__fetchStatus"),
+    rawResolvedDateCounts: countResolvedDates(tickets),
+    forceRefresh,
     ...summary,
     metricDiagnostics,
   };
@@ -251,9 +256,10 @@ function cleanFilter(value) {
   return String(value || "").trim();
 }
 
-async function fetchTickets(range) {
+async function fetchTickets(range, options = {}) {
   const config = getKaptureConfig();
   const cacheKey = JSON.stringify({
+    version: CACHE_SCHEMA_VERSION,
     range,
     baseUrl: config.baseUrl,
     endpoint: config.endpoint,
@@ -270,12 +276,12 @@ async function fetchTickets(range) {
   });
 
   const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.createdAt < CACHE_TTL_MS) {
+  if (!options.forceRefresh && cached && Date.now() - cached.createdAt < CACHE_TTL_MS) {
     return cached.tickets;
   }
 
   if (config.payloadStyle === "kapture-array") {
-    const tickets = await fetchKaptureArrayTickets(config, range);
+    const tickets = await fetchKaptureArrayTickets(config, range, options);
     cache.set(cacheKey, { createdAt: Date.now(), tickets });
     return tickets;
   }
@@ -590,13 +596,22 @@ function buildRequestAttempts(config, range) {
   ];
 }
 
-async function fetchKaptureArrayTickets(config, range) {
-  const ticketGroups = await Promise.all(
-    orderedFetchStatuses(config.fetchStatuses).map((status) => fetchKaptureStatusTickets(config, range, status)),
+async function fetchKaptureArrayTickets(config, range, options = {}) {
+  const completedStatuses = orderedFetchStatuses(config.fetchStatuses).filter(isCompletedStatusParam);
+  const activeStatuses = orderedFetchStatuses(config.fetchStatuses).filter((status) => !isCompletedStatusParam(status));
+  const ticketGroups = [];
+
+  for (const status of completedStatuses) {
+    ticketGroups.push(await fetchKaptureStatusTickets(config, range, status, options));
+  }
+
+  const activeTicketGroups = await Promise.all(
+    activeStatuses.map((status) => fetchKaptureStatusTickets(config, range, status, options)),
   );
+  ticketGroups.push(...activeTicketGroups);
 
   if (shouldFetchCreatedStatus(config)) {
-    const createdTickets = await fetchCreatedStatusTickets(config, getCreatedStatusFetchRange(range));
+    const createdTickets = await fetchCreatedStatusTickets(config, getCreatedStatusFetchRange(range), options);
     ticketGroups.push(createdTickets.map((ticket) => ({ ...ticket, __createdOnly: true })));
   }
 
@@ -612,7 +627,7 @@ async function fetchKaptureArrayTickets(config, range) {
   return allTickets;
 }
 
-async function fetchCreatedStatusTickets(config, range) {
+async function fetchCreatedStatusTickets(config, range, options = {}) {
   const supplementConfig = {
     ...config,
     maxPages: config.createdSupplementMaxPages,
@@ -621,7 +636,7 @@ async function fetchCreatedStatusTickets(config, range) {
 
   try {
     return await withTimeout(
-      fetchKaptureStatusTickets(supplementConfig, range, config.createdStatus),
+      fetchKaptureStatusTickets(supplementConfig, range, config.createdStatus, options),
       config.createdSupplementTimeoutMs,
       "Created-ticket supplement timed out.",
     );
@@ -650,12 +665,12 @@ function orderedFetchStatuses(statuses) {
   return [...statuses].sort((a, b) => Number(!isCompletedStatusParam(a)) - Number(!isCompletedStatusParam(b)));
 }
 
-async function fetchKaptureStatusTickets(config, range, status) {
+async function fetchKaptureStatusTickets(config, range, status, options = {}) {
   const statusRange = getStatusFetchRange(range, status);
   const cacheKey = getStatusCacheKey(config, statusRange, status);
   const cached = statusCache.get(cacheKey);
 
-  if (cached && Date.now() - cached.createdAt < CACHE_TTL_MS) {
+  if (!options.forceRefresh && cached && Date.now() - cached.createdAt < CACHE_TTL_MS) {
     return cached.tickets;
   }
 
@@ -671,7 +686,7 @@ async function fetchKaptureStatusTickets(config, range, status) {
     }
   } catch (error) {
     const fallback = await readStatusCache(cacheKey);
-    if (fallback && fallback.tickets.length && Date.now() - fallback.createdAt < STATUS_STALE_TTL_MS) {
+    if (!options.forceRefresh && fallback && fallback.tickets.length && Date.now() - fallback.createdAt < STATUS_STALE_TTL_MS) {
       statusCache.set(cacheKey, fallback);
       return fallback.tickets;
     }
@@ -684,11 +699,11 @@ async function fetchKaptureStatusTickets(config, range, status) {
     return tickets;
   }
 
-  if (completedStatus && cached && cached.tickets.length && Date.now() - cached.createdAt < COMPLETED_STALE_TTL_MS) {
+  if (!options.forceRefresh && completedStatus && cached && cached.tickets.length && Date.now() - cached.createdAt < COMPLETED_STALE_TTL_MS) {
     return cached.tickets;
   }
 
-  if (completedStatus) {
+  if (!options.forceRefresh && completedStatus) {
     const diskCached = await readStatusCache(cacheKey);
     if (diskCached && diskCached.tickets.length && Date.now() - diskCached.createdAt < COMPLETED_STALE_TTL_MS) {
       statusCache.set(cacheKey, diskCached);
@@ -744,11 +759,30 @@ async function fetchKaptureTicketPage(config, range, status, pageIndex) {
   };
 
   const payload = await callKaptureWithRetry(config, attempt);
-  return extractTickets(payload);
+  return extractTickets(payload).map((ticket) => ({ ...ticket, __fetchStatus: status || "all" }));
+}
+
+function countBy(items, field) {
+  return items.reduce((counts, item) => {
+    const key = String(item?.[field] || "unknown");
+    counts[key] = (counts[key] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function countResolvedDates(tickets) {
+  const counts = {};
+  for (const ticket of tickets) {
+    const dateKey = parseKaptureDateKey(ticket?.taskEnddate);
+    if (!dateKey) continue;
+    counts[dateKey] = (counts[dateKey] || 0) + 1;
+  }
+  return Object.fromEntries(Object.entries(counts).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 14));
 }
 
 function getStatusCacheKey(config, range, status) {
   return JSON.stringify({
+    version: CACHE_SCHEMA_VERSION,
     status,
     range: {
       startDate: range.startDate,
@@ -1148,22 +1182,19 @@ function summarizeTickets(tickets, range) {
       incrementBreakdown(creatorCounts, ticket.creatorName || "Unknown", isResolved);
     }
 
-    if (createdOnly) continue;
-
     if (resolvedDay && dailyMap.has(resolvedDay)) {
       dailyMap.get(resolvedDay).resolved += 1;
       incrementResolvedPriority(resolvedPriorityCounts, teammateName, getPriorityName(ticket));
       const completedBy = getCompleterName(ticket);
       completedTickets.push({ ...ticket, completedByName: completedBy });
       incrementCompletedBy(completedByCounts, completedBy);
+      incrementTeammateDay(teammateDailyCounts, resolvedDay, teammateName, "solved");
     }
+
+    if (createdOnly) continue;
 
     if (attemptedDay && dailyMap.has(attemptedDay)) {
       incrementTeammateDay(teammateDailyCounts, attemptedDay, teammateName, "attempted");
-    }
-
-    if (resolvedDay && dailyMap.has(resolvedDay)) {
-      incrementTeammateDay(teammateDailyCounts, resolvedDay, teammateName, "solved");
     }
 
     if (createdInRange && !isResolved) {
