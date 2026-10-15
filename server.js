@@ -24,7 +24,11 @@ const REQUEST_TIMEOUT_MS = clampNumber(Number(process.env.KAPTURE_REQUEST_TIMEOU
 const PERFORMANCE_TIMEOUT_MS = clampNumber(Number(process.env.KAPTURE_PERFORMANCE_TIMEOUT_MS || 5_000), 1_000, 30_000);
 const CREATED_SUPPLEMENT_TIMEOUT_MS = clampNumber(Number(process.env.KAPTURE_CREATED_SUPPLEMENT_TIMEOUT_MS || 12_000), 2_000, 60_000);
 const CREATED_SUPPLEMENT_MAX_PAGES = clampNumber(Number(process.env.KAPTURE_CREATED_SUPPLEMENT_MAX_PAGES || 10), 1, 100);
-const PAGE_CONCURRENCY = clampNumber(Number(process.env.KAPTURE_PAGE_CONCURRENCY || 12), 1, 12);
+// Kapture starts truncating pages above ~4 parallel reads (measured: 8 and 12 both
+// returned 3,588 completed tickets where 1 and 4 returned 4,730). Keep this at 4;
+// fetchKaptureStatusTicketsOnce repairs any truncation it still sees, but repairs
+// cost sequential round-trips and are slower than just not overloading the API.
+const PAGE_CONCURRENCY = clampNumber(Number(process.env.KAPTURE_PAGE_CONCURRENCY || 4), 1, 12);
 const STATUS_CACHE_DIR = path.join(__dirname, "logs", "status-cache");
 const cache = new Map();
 const statusCache = new Map();
@@ -700,20 +704,24 @@ async function fetchKaptureStatusTickets(config, range, status) {
   return tickets;
 }
 
+// Walks every page of one status. Kapture returns short-but-non-empty pages in the
+// middle of a result set, so a short page must NOT be treated as the end: stopping
+// there discards every later page (measured: ~23% of completed tickets lost, and the
+// current day dropped to zero). Only a page that comes back genuinely empty proves
+// we are past the end. Re-reading an offset is harmless — addTicketVersion dedupes
+// by ticketId. Width adapts so small result sets still cost two requests.
 async function fetchKaptureStatusTicketsOnce(config, range, status) {
   const tickets = [];
-  const firstPage = await fetchKaptureTicketPage(config, range, status, 0);
-  tickets.push(...firstPage);
+  let pageIndex = 0;
+  let previousPageFull = false;
+  let repairedPages = 0;
 
-  if (firstPage.length < config.pageLimit) {
-    return tickets;
-  }
-
-  for (let pageIndex = 1; pageIndex < config.maxPages; pageIndex += config.pageConcurrency) {
+  while (pageIndex < config.maxPages) {
+    const width = previousPageFull ? config.pageConcurrency : 1;
     const batchIndexes = [];
     for (
       let batchIndex = pageIndex;
-      batchIndex < Math.min(pageIndex + config.pageConcurrency, config.maxPages);
+      batchIndex < Math.min(pageIndex + width, config.maxPages);
       batchIndex += 1
     ) {
       batchIndexes.push(batchIndex);
@@ -723,15 +731,40 @@ async function fetchKaptureStatusTicketsOnce(config, range, status) {
       batchIndexes.map((batchIndex) => fetchKaptureTicketPage(config, range, status, batchIndex)),
     );
 
+    // Kapture truncates pages under parallel load, and the response carries no total
+    // to check against, so any short page read inside a batch is untrustworthy. Read
+    // those offsets again one at a time and keep whichever read returned more rows.
+    if (batchIndexes.length > 1) {
+      for (let slot = 0; slot < batchPages.length; slot += 1) {
+        if (batchPages[slot].length >= config.pageLimit) continue;
+        const verified = await fetchKaptureTicketPage(config, range, status, batchIndexes[slot]);
+        if (verified.length > batchPages[slot].length) {
+          batchPages[slot] = verified;
+          repairedPages += 1;
+        }
+      }
+    }
+
+    let batchCount = 0;
     for (const pageTickets of batchPages) {
       tickets.push(...pageTickets);
+      batchCount += pageTickets.length;
     }
 
-    if (batchPages.some((pageTickets) => pageTickets.length < config.pageLimit)) {
-      break;
+    pageIndex += batchIndexes.length;
+
+    if (batchCount === 0) {
+      if (repairedPages) {
+        console.warn(`Kapture "${status}" fetch repaired ${repairedPages} truncated page(s); lower KAPTURE_PAGE_CONCURRENCY (currently ${config.pageConcurrency}) to avoid the retries.`);
+      }
+      return tickets;
     }
+    previousPageFull = batchPages.at(-1).length >= config.pageLimit;
   }
 
+  console.warn(
+    `Kapture ${status} fetch hit the ${config.maxPages}-page cap for ${range.startDate}..${range.endDate}; counts may be short. Raise KAPTURE_MAX_PAGES.`,
+  );
   return tickets;
 }
 
@@ -1358,15 +1391,19 @@ function parseKaptureTime(value) {
   const raw = String(value || "").trim();
   if (!raw || raw === "0000-00-00" || raw.startsWith("0000-00-00")) return 0;
 
+  // Kapture sends day-first dates (`18-08-2026 13:04`). This must be tried BEFORE
+  // Date.parse: V8 rejects the form when a time is attached but silently accepts the
+  // date-only form as month-first, so `08-09-2026` (8 Sep) landed on 9 Aug. The
+  // pattern needs a 4-digit trailing year, so ISO values fall through untouched.
+  const match = raw.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:[\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (match) {
+    const [, d, m, y, hh = "0", mm = "0", ss = "0"] = match;
+    return new Date(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm), Number(ss)).getTime();
+  }
+
   const isoLike = raw.includes("T") ? raw : raw.replace(" ", "T");
   const parsed = Date.parse(isoLike);
-  if (!Number.isNaN(parsed)) return parsed;
-
-  const match = raw.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
-  if (!match) return 0;
-
-  const [, d, m, y, hh = "0", mm = "0", ss = "0"] = match;
-  return new Date(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm), Number(ss)).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 function dailyRowsToCsv(rows) {

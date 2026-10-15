@@ -3,79 +3,104 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
     <title>Kapture Live Ticket Dashboard</title>
     <link rel="stylesheet" href="/assets/styles.css">
   </head>
   <body>
-    <main class="app-shell">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">Kapture support</p>
-          <h1>Operations dashboard</h1>
-        </div>
-        <div class="status-pill" id="statusPill">
+    <header class="appbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">K</span>
+        <span class="brand-text">
+          <span class="brand-title">Kapture Support</span>
+          <span class="brand-sub">Live ticket operations</span>
+        </span>
+      </div>
+
+      <div class="appbar-spacer"></div>
+
+      <div class="appbar-actions">
+        <div class="status-pill" id="statusPill" role="status" aria-live="polite">
           <span class="status-dot"></span>
           <span id="statusText">Connecting</span>
         </div>
-      </header>
+        <button class="btn ghost icon" type="button" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
+          <span id="themeIcon" aria-hidden="true">◐</span>
+        </button>
+        <button class="btn" type="button" id="refreshButton">Refresh</button>
+      </div>
+    </header>
 
-      <section class="priority-filter-stack" aria-label="Dashboard filters">
-        <div class="filter-block">
-          <button class="filter-trigger" id="dateRangeTrigger" type="button">
+    <main class="shell">
+      <div class="page-head">
+        <div>
+          <p class="eyebrow">Operations</p>
+          <h1>Ticket dashboard</h1>
+          <p class="sub" id="rangeSummary">Choose a date range to load live Kapture data.</p>
+        </div>
+      </div>
+
+      <!-- One filter row, scoping every panel below -->
+      <section class="toolbar" aria-label="Dashboard filters">
+        <div class="filter-block" id="dateRangeBlock">
+          <button class="filter-trigger" id="dateRangeTrigger" type="button" aria-expanded="false">
             <span>
-              <span class="filter-label">Date Range</span>
+              <span class="filter-label">Date range</span>
               <span class="filter-value" id="dateRangeValue">Select range</span>
             </span>
-            <span class="filter-chevron">v</span>
+            <span class="filter-chevron" aria-hidden="true">▼</span>
           </button>
           <div class="filter-menu" id="dateRangeMenu" hidden>
             <div class="range-options">
               <button type="button" data-range="today">Today</button>
               <button type="button" data-range="yesterday">Yesterday</button>
-              <button type="button" data-range="week">This Week</button>
-              <button type="button" data-range="month">This Month</button>
-              <button type="button" data-range="custom">Custom Date & Time</button>
+              <button type="button" data-range="week">This week</button>
+              <button type="button" data-range="month">This month</button>
+              <button type="button" data-range="custom">Custom range…</button>
             </div>
             <div class="custom-fields" id="customDateFields" hidden>
               <label>
-                <span>Start Date & Time</span>
+                <span>Start date &amp; time</span>
                 <input type="datetime-local" id="customStartDate">
               </label>
               <label>
-                <span>End Date & Time</span>
+                <span>End date &amp; time</span>
                 <input type="datetime-local" id="customEndDate">
               </label>
-              <button class="button" type="button" id="applyCustomRange">Apply Custom</button>
+              <button class="btn" type="button" id="applyCustomRange">Apply range</button>
             </div>
           </div>
         </div>
 
-        <div class="filter-block">
-          <button class="filter-trigger" id="agentTrigger" type="button">
+        <div class="filter-block" id="agentBlock">
+          <button class="filter-trigger" id="agentTrigger" type="button" aria-expanded="false">
             <span>
-              <span class="filter-label">Agent Name</span>
+              <span class="filter-label">Teammate</span>
               <span class="filter-value" id="agentValue">All teammates</span>
             </span>
-            <span class="filter-chevron">v</span>
+            <span class="filter-chevron" aria-hidden="true">▼</span>
           </button>
           <div class="filter-menu" id="agentMenu" hidden>
+            <label class="agent-search">
+              <span class="sr-only">Filter teammates</span>
+              <input type="search" id="agentSearch" placeholder="Find a teammate">
+            </label>
             <div class="agent-list" id="agentList"></div>
           </div>
         </div>
 
-        <div class="button-row">
-          <button type="button" id="refreshButton">Refresh</button>
-          <details class="export-menu">
-            <summary>Export</summary>
-            <div>
-              <a id="dailyCsv" href="/api/export/daily.csv">Daily CSV</a>
-              <a id="createdCsv" href="/api/export/created.csv">Created CSV</a>
-              <a id="teamCsv" href="/api/export/team.csv">Team CSV</a>
-              <a id="pendingCsv" href="/api/export/pending.csv">Pending CSV</a>
-              <a id="resolvedCsv" href="/api/export/resolved.csv">Resolved CSV</a>
-            </div>
-          </details>
-        </div>
+        <div class="toolbar-spacer"></div>
+
+        <details class="export-menu" id="exportMenu">
+          <summary>Export CSV</summary>
+          <div>
+            <a id="dailyCsv" href="/api/export/daily.csv">Daily summary</a>
+            <a id="createdCsv" href="/api/export/created.csv">Created tickets</a>
+            <a id="teamCsv" href="/api/export/team.csv">Teammate summary</a>
+            <a id="pendingCsv" href="/api/export/pending.csv">Pending tickets</a>
+            <a id="resolvedCsv" href="/api/export/resolved.csv">Resolved tickets</a>
+          </div>
+        </details>
 
         <div hidden>
           <input id="startDate">
@@ -87,114 +112,179 @@
         </div>
       </section>
 
-      <section class="metric-grid" aria-label="Ticket metrics">
-        <article class="metric-card">
-          <span>Created</span>
-          <strong id="createdMetric">0</strong>
-          <small id="createdMetricHelp">tickets in range</small>
+      <section class="banner" id="messageBand" hidden>
+        <span class="banner-icon" aria-hidden="true">!</span>
+        <div>
+          <strong id="messageTitle">No data</strong>
+          <p id="messageText"></p>
+        </div>
+      </section>
+
+      <section class="kpi-row" aria-label="Ticket metrics">
+        <article class="stat-tile" data-series="1">
+          <span class="stat-label">Created</span>
+          <span class="stat-value" id="createdMetric">0</span>
+          <div class="stat-foot">
+            <span class="stat-help" id="createdMetricHelp">tickets in range</span>
+            <svg class="spark" id="createdSpark" viewBox="0 0 84 30" preserveAspectRatio="none" aria-hidden="true"></svg>
+          </div>
         </article>
-        <article class="metric-card">
-          <span>Resolved</span>
-          <strong id="resolvedMetric">0</strong>
-          <small id="resolvedMetricHelp">using taskEnddate</small>
+        <article class="stat-tile" data-series="2">
+          <span class="stat-label">Resolved</span>
+          <span class="stat-value" id="resolvedMetric">0</span>
+          <div class="stat-foot">
+            <span class="stat-help" id="resolvedMetricHelp">using taskEnddate</span>
+            <svg class="spark" id="resolvedSpark" viewBox="0 0 84 30" preserveAspectRatio="none" aria-hidden="true"></svg>
+          </div>
         </article>
-        <article class="metric-card accent">
-          <span>Pending</span>
-          <strong id="pendingMetric">0</strong>
-          <small id="pendingMetricHelp">current open items</small>
+        <article class="stat-tile">
+          <span class="stat-label">Pending</span>
+          <span class="stat-value" id="pendingMetric">0</span>
+          <div class="stat-foot">
+            <span class="stat-help" id="pendingMetricHelp">current open items</span>
+            <svg class="spark" id="pendingSpark" viewBox="0 0 84 30" preserveAspectRatio="none" aria-hidden="true"></svg>
+          </div>
         </article>
-        <article class="metric-card">
-          <span>Open backlog</span>
-          <strong id="backlogMetric">0</strong>
-          <small id="backlogMetricHelp">from fetched range</small>
+        <article class="stat-tile">
+          <span class="stat-label">Open backlog</span>
+          <span class="stat-value" id="backlogMetric">0</span>
+          <div class="stat-foot">
+            <span class="stat-help" id="backlogMetricHelp">from fetched range</span>
+            <svg class="spark" id="backlogSpark" viewBox="0 0 84 30" preserveAspectRatio="none" aria-hidden="true"></svg>
+          </div>
         </article>
       </section>
 
-      <section class="insight-grid">
-        <section class="panel team-resolved-panel">
-          <div class="section-heading">
+      <section class="chart-grid">
+        <section class="panel">
+          <div class="panel-head">
             <div>
-              <p class="eyebrow">Teammate summary</p>
-              <h2>Resolved by teammate</h2>
+              <h2>Created vs resolved</h2>
+              <p class="panel-sub">Daily ticket flow across the selected range</p>
             </div>
-            <span id="teamResolvedCountLabel">0 teammates</span>
-          </div>
-          <div class="team-resolved-chart">
-            <div class="teammate-donut" id="teamResolvedDonut">
-              <strong id="teamResolvedTotal">0</strong>
-            </div>
-            <div class="teammate-legend-wrap">
-              <div class="teammate-legend" id="teamResolvedList"></div>
-              <div class="legend-pager" id="teamResolvedPager" hidden>
-                <button class="pager-button" id="teamResolvedPrev" type="button" aria-label="Previous teammates">▲</button>
-                <span id="teamResolvedPageLabel">1/1</span>
-                <button class="pager-button active" id="teamResolvedNext" type="button" aria-label="Next teammates">▼</button>
+            <div class="panel-head-right">
+              <div class="legend" id="trendLegend">
+                <span class="legend-item"><span class="legend-key" style="background: var(--series-1)"></span>Created</span>
+                <span class="legend-item"><span class="legend-key" style="background: var(--series-2)"></span>Resolved</span>
               </div>
+              <div class="segmented" role="group" aria-label="Trend view">
+                <button type="button" id="trendChartViewButton" class="active" data-trend-view="chart">Chart</button>
+                <button type="button" id="trendTableViewButton" data-trend-view="table">Table</button>
+              </div>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="trend-wrap" id="trendWrap">
+              <svg class="trend-chart" id="trendChart" role="img" aria-label="Daily created and resolved ticket counts"></svg>
+              <div class="chart-tip" id="trendTip" hidden></div>
+            </div>
+            <div class="empty-block" id="trendEmpty" hidden>
+              <strong>No daily data</strong>
+              <span>Pick a date range and refresh.</span>
+            </div>
+          </div>
+          <div class="table-wrap" id="trendTableWrap" hidden>
+            <table>
+              <caption class="sr-only">Daily created, resolved, pending and backlog counts</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">Created</th>
+                  <th scope="col">Resolved</th>
+                  <th scope="col">Pending created</th>
+                  <th scope="col">Open backlog</th>
+                </tr>
+              </thead>
+              <tbody id="trendTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Resolved by teammate</h2>
+              <p class="panel-sub" id="teamResolvedCountLabel">0 teammates</p>
+            </div>
+            <div class="panel-head-right">
+              <div class="rank-total">
+                <strong id="teamResolvedTotal">0</strong>
+                <span>resolved</span>
+              </div>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="rank-list" id="teamResolvedList"></div>
+            <div class="legend-pager" id="teamResolvedPager" hidden>
+              <span id="teamResolvedPageLabel">1/1</span>
+              <button class="pager-button" id="teamResolvedPrev" type="button" aria-label="Previous teammates">▲</button>
+              <button class="pager-button" id="teamResolvedNext" type="button" aria-label="Next teammates">▼</button>
             </div>
           </div>
         </section>
       </section>
 
-      <section class="table-band">
-        <div class="section-heading">
+      <section class="panel table-band">
+        <div class="panel-head">
           <div>
-            <p class="eyebrow">Ticket details</p>
             <h2 id="ticketDetailsTitle">Pending tickets</h2>
+            <p class="panel-sub">Ticket-level detail for the selected range</p>
           </div>
-          <span id="ticketDetailsCountLabel">0 tickets</span>
+          <div class="panel-head-right">
+            <span class="count-chip" id="ticketDetailsCountLabel">0 tickets</span>
+          </div>
         </div>
-        <div class="ticket-tools">
-          <div class="tab-row" aria-label="Ticket detail views">
-            <button class="tab-button active" type="button" id="pendingTabButton" data-open-work-tab="pending">Pending</button>
-            <button class="tab-button" type="button" id="resolvedTabButton" data-open-work-tab="resolved">Resolved</button>
+
+        <div class="table-tools">
+          <div class="segmented" role="group" aria-label="Ticket detail views">
+            <button class="active" type="button" id="pendingTabButton" data-open-work-tab="pending">Pending</button>
+            <button type="button" id="resolvedTabButton" data-open-work-tab="resolved">Resolved</button>
           </div>
           <label class="search-field">
-            <span>Search tickets</span>
-            <input id="ticketSearch" type="search" placeholder="Ticket ID or title">
+            <span class="sr-only">Search tickets</span>
+            <input id="ticketSearch" type="search" placeholder="Search ticket ID, title, queue…">
           </label>
         </div>
 
-        <div class="open-work-panel" id="pendingPanel">
+        <div id="pendingPanel">
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Ticket</th>
-                  <th>Created</th>
-                  <th>Queue</th>
-                  <th>Creator</th>
-                  <th>Assigned</th>
-                  <th>Status</th>
-                  <th>Title</th>
+                  <th scope="col">Ticket</th>
+                  <th scope="col">Created</th>
+                  <th scope="col">Queue</th>
+                  <th scope="col">Creator</th>
+                  <th scope="col">Assigned</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Title</th>
                 </tr>
               </thead>
               <tbody id="pendingBody"></tbody>
             </table>
           </div>
         </div>
-        <div class="open-work-panel" id="resolvedPanel" hidden>
+
+        <div id="resolvedPanel" hidden>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Ticket</th>
-                  <th>Resolved</th>
-                  <th>Resolved by</th>
-                  <th>Priority</th>
-                  <th>Queue</th>
-                  <th>Status</th>
-                  <th>Title</th>
+                  <th scope="col">Ticket</th>
+                  <th scope="col">Resolved</th>
+                  <th scope="col">Resolved by</th>
+                  <th scope="col">Priority</th>
+                  <th scope="col">Queue</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Title</th>
                 </tr>
               </thead>
               <tbody id="resolvedDetailsBody"></tbody>
             </table>
           </div>
         </div>
-      </section>
 
-      <section class="message-band" id="messageBand" hidden>
-        <strong id="messageTitle">No data</strong>
-        <p id="messageText"></p>
+        <p class="table-note" id="tableNote" hidden></p>
       </section>
     </main>
 

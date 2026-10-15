@@ -37,6 +37,27 @@ If the UI is already open but still shows old data after code or `.env` changes,
 
 If Created/Resolved show `ticket-list fallback`, refresh `KAPTURE_DASHBOARD_COOKIE` from a fresh logged-in Kapture browser request. Kapture's dashboard aggregation endpoint returns the official headline counts, but it requires a current logged-in session cookie.
 
+## UI
+
+The interface lives in three files: `dashboard.html` (structure), `assets/styles.css`
+(design tokens and layout) and `assets/app.js` (fetching and rendering). There is no
+build step — edit and reload.
+
+- **Light and dark** follow the OS by default; the ◐ button in the top bar overrides
+  it and remembers the choice in `localStorage`.
+- **One filter row** (date range, teammate) scopes every panel below it.
+- **Stat tiles** carry a sparkline of the same metric per day, drawn from `daily`.
+- **Created vs resolved** is a two-series line chart with a hover crosshair and a
+  `Table` toggle, so every plotted value is also readable as text.
+- **Resolved by teammate** is a ranked bar list, paged 8 at a time.
+- Ticket tables render the first 250 rows and say so; use the CSV exports for the
+  full set.
+
+Chart colors come from a validated two-series palette (blue `#2a78d6`/`#3987e5` for
+created, orange `#eb6834`/`#d95926` for resolved) that clears colorblind-separation
+and contrast checks in both themes. UI chrome stays monochrome so color only ever
+means data.
+
 ## Live API
 
 The server calls:
@@ -60,7 +81,7 @@ Optional tuning:
 - `KAPTURE_PAYLOAD_STYLE`: defaults to `kapture-array`
 - `KAPTURE_FETCH_STATUSES`: defaults to `P,C` so pending and completed tickets are combined
 - `KAPTURE_PAGE_LIMIT`: defaults to `500`
-- `KAPTURE_PAGE_CONCURRENCY`: defaults to `12` and controls how many paginated ticket-list pages are fetched in parallel
+- `KAPTURE_PAGE_CONCURRENCY`: defaults to `4` and controls how many paginated ticket-list pages are fetched in parallel. Do not raise it: Kapture silently returns short pages above ~4 parallel reads, which undercounts resolved tickets (at `12` a 8-day range returned 3,588 completed tickets instead of 4,730, and the current day read `0` instead of `102`). The fetcher detects truncated pages and re-reads them sequentially, so counts stay correct either way, but a higher setting is both slower and noisier.
 - `KAPTURE_REQUEST_TIMEOUT_MS`: defaults to `20000` so Kapture calls cannot hang forever
 - `KAPTURE_PERFORMANCE_TIMEOUT_MS`: defaults to `5000` so expired dashboard aggregation sessions fail fast
 - `KAPTURE_COMPLETED_LOOKBACK_DAYS`: defaults to the activity lookback and controls how far back completed-ticket rows are fetched for resolved counts
