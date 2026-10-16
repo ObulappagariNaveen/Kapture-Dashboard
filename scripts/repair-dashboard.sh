@@ -64,6 +64,28 @@ port_listener_pids() {
   /usr/sbin/lsof -tiTCP:"$PORT" -sTCP:LISTEN 2>/dev/null || true
 }
 
+stop_launchagent() {
+  local domain="gui/$(id -u)"
+  launchctl kill SIGTERM "$domain/$LABEL" >/dev/null 2>&1 || true
+  sleep 1
+  launchctl kill SIGKILL "$domain/$LABEL" >/dev/null 2>&1 || true
+  launchctl bootout "$domain/$LABEL" >/dev/null 2>&1 || true
+  launchctl bootout "$domain" "$PLIST_TARGET" >/dev/null 2>&1 || true
+}
+
+print_manual_restart() {
+  cat <<EOF
+The old dashboard process is still holding port $PORT.
+Run these commands from the normal macOS Terminal app:
+
+launchctl kill SIGKILL gui/\$(id -u)/$LABEL
+launchctl bootout gui/\$(id -u)/$LABEL 2>/dev/null || true
+pkill -f "$APP_DIR/server.js" 2>/dev/null || true
+cd "$SOURCE_DIR"
+./scripts/repair-dashboard.sh restart
+EOF
+}
+
 echo "Checking Kapture dashboard at http://$HOST:$PORT/"
 if [[ "${1:-}" != "restart" ]] && health_check && home_check; then
   echo "Dashboard is already running."
@@ -89,8 +111,7 @@ clear_log /tmp/kapture-live-dashboard-ui.out.log
 clear_log /tmp/kapture-live-dashboard-ui-watch.err.log
 clear_log /tmp/kapture-live-dashboard-ui-watch.out.log
 
-launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
-launchctl bootout "gui/$(id -u)" "$PLIST_TARGET" >/dev/null 2>&1 || true
+stop_launchagent
 if [[ "${1:-}" == "restart" ]]; then
   stop_port_listener
   sleep 1
@@ -110,7 +131,8 @@ for attempt in {1..45}; do
       for original_pid in "${original_pids[@]}"; do
         for current_pid in "${current_pids[@]}"; do
           if [[ "$original_pid" == "$current_pid" ]]; then
-            echo "Dashboard is responding, but old process $original_pid is still running. Run this script from Terminal so macOS can replace it."
+            echo "Dashboard is responding, but old process $original_pid is still running."
+            print_manual_restart
             exit 1
           fi
         done
