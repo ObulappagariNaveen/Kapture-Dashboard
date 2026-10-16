@@ -37,6 +37,25 @@ If the UI is already open but still shows old data after code or `.env` changes,
 
 If Created/Resolved show `ticket-list fallback`, refresh `KAPTURE_DASHBOARD_COOKIE` from a fresh logged-in Kapture browser request. Kapture's dashboard aggregation endpoint returns the official headline counts, but it requires a current logged-in session cookie.
 
+## What "Resolved" counts
+
+`totals.resolved` is every ticket Kapture marks `status=Complete`. That bundles three
+different substatuses together, so it is a *completion* count, not a resolution count:
+
+| substatus | typical share | meaning |
+| --- | --- | --- |
+| `Closed` | ~72% | closed without an explicit resolution |
+| `Resolved` | ~25% | genuinely resolved |
+| `Replied` | ~3% | agent replied; arguably not a completion at all |
+
+`totals.resolvedStrict` counts only `substatus=Resolved`, and `resolvedBySubstatus`
+returns the full split. The Resolved tile renders that split as a stacked bar so the
+headline is never mistaken for a resolution count. Use `resolvedStrict` for anything
+performance-related.
+
+`isResolvedTicket()` matches on *status* only and never reads substatus — that is
+deliberate, since the headline is meant to mirror Kapture's own Complete bucket.
+
 ## UI
 
 The interface lives in three files: `dashboard.html` (structure), `assets/styles.css`

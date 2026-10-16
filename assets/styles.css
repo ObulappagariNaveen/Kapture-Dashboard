@@ -1548,6 +1548,130 @@ tbody td.num {
   }
 }
 
+/* ----------------------------------------- resolved substatus breakdown */
+/* "Resolved" is every Complete ticket, which lumps Closed and Replied in with
+   genuine resolutions. This strip keeps that split visible on the tile. */
+
+.info-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  margin-left: 5px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 9px;
+  font-style: italic;
+  font-family: Georgia, serif;
+  line-height: 1;
+  cursor: help;
+  vertical-align: middle;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.info-dot:hover,
+.info-dot:focus-visible {
+  color: var(--ink);
+  border-color: var(--ink-2);
+}
+
+.resolved-split {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.split-bar {
+  display: flex;
+  height: 5px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-3);
+}
+.split-seg {
+  height: 100%;
+  min-width: 2px;
+  transition: opacity 0.15s ease;
+}
+.split-bar:hover .split-seg {
+  opacity: 0.55;
+}
+.split-bar .split-seg:hover {
+  opacity: 1;
+}
+
+.split-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 11px;
+}
+.split-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.split-key b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.split-key span.split-share {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.split-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  flex: none;
+}
+
+/* substatus colours, all drawn from theme-aware tokens */
+.sub-resolved { background: var(--good); }
+.sub-closed   { background: var(--series-1); }
+.sub-replied  { background: var(--warning); }
+.sub-other    { background: var(--line-strong); }
+
+/* the legend dots sit next to text, so they take the readable ink variants */
+.split-key .sub-resolved { background: var(--good-ink); }
+.split-key .sub-replied  { background: var(--warning-ink); }
+.split-key .sub-other    { background: var(--muted); }
+
+/* ------------------------------------------------------------- polish */
+
+.stat-value,
+.rank-value,
+.rank-total strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-tile {
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.stat-tile:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-tile,
+  .split-seg,
+  .info-dot {
+    transition: none;
+  }
+  .stat-tile:hover {
+    transform: none;
+  }
+}
+
 @media print {
   .appbar-actions,
   .toolbar,

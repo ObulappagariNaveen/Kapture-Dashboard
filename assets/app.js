@@ -35,6 +35,10 @@ const elements = {
   createdMetricHelp: document.querySelector("#createdMetricHelp"),
   resolvedMetric: document.querySelector("#resolvedMetric"),
   resolvedMetricHelp: document.querySelector("#resolvedMetricHelp"),
+  resolvedSplit: document.querySelector("#resolvedSplit"),
+  resolvedSplitBar: document.querySelector("#resolvedSplitBar"),
+  resolvedSplitKeys: document.querySelector("#resolvedSplitKeys"),
+  resolvedInfo: document.querySelector("#resolvedInfo"),
   pendingMetric: document.querySelector("#pendingMetric"),
   pendingMetricHelp: document.querySelector("#pendingMetricHelp"),
   backlogMetric: document.querySelector("#backlogMetric"),
@@ -384,6 +388,7 @@ function renderDashboard(payload) {
   elements.pendingMetricHelp.textContent = "ticket-list details";
   elements.backlogMetricHelp.textContent = "ticket-list details";
 
+  renderResolvedSplit(payload);
   updateRangeSummary(payload);
   renderSparklines(payload);
   renderAgentMenu(payload);
@@ -405,6 +410,7 @@ function renderEmptyState() {
   elements.resolvedMetricHelp.textContent = "using taskEnddate";
   elements.pendingMetricHelp.textContent = "current open items";
   elements.backlogMetricHelp.textContent = "from fetched range";
+  renderResolvedSplit(null);
   renderSparklines(null);
   renderTrend(null);
   renderAgentMenu(null);
@@ -424,6 +430,70 @@ function updateRangeSummary(payload) {
     ? formatDayShort(start)
     : `${formatDayShort(start)} – ${formatDayShort(end)}`;
   elements.rangeSummary.textContent = `${span} · ${days} day${days === 1 ? "" : "s"}`;
+}
+
+/* The Resolved headline counts every ticket Kapture marks status=Complete, which
+   bundles Closed and Replied together with genuine resolutions. Show the split so
+   nobody reads the headline as a resolution count. */
+
+const SUBSTATUS_CLASSES = {
+  resolved: "sub-resolved",
+  closed: "sub-closed",
+  replied: "sub-replied",
+};
+
+function substatusClass(name) {
+  return SUBSTATUS_CLASSES[String(name || "").toLowerCase()] || "sub-other";
+}
+
+function renderResolvedSplit(payload) {
+  const rows = payload?.resolvedBySubstatus || [];
+  const total = rows.reduce((sum, row) => sum + row.count, 0);
+
+  if (!total) {
+    elements.resolvedSplit.hidden = true;
+    elements.resolvedSplitBar.replaceChildren();
+    elements.resolvedSplitKeys.replaceChildren();
+    elements.resolvedInfo.title = "Counts every ticket Kapture marks Complete.";
+    return;
+  }
+
+  elements.resolvedSplit.hidden = false;
+
+  const bar = rows.map((row) => {
+    const seg = document.createElement("span");
+    seg.className = `split-seg ${substatusClass(row.substatus)}`;
+    seg.style.width = `${(row.count / total) * 100}%`;
+    seg.title = `${row.substatus}: ${formatter.format(row.count)}`;
+    return seg;
+  });
+
+  const keys = rows.map((row) => {
+    const key = document.createElement("span");
+    key.className = "split-key";
+
+    const dot = document.createElement("span");
+    dot.className = `split-dot ${substatusClass(row.substatus)}`;
+
+    const label = document.createTextNode(`${row.substatus} `);
+    const value = document.createElement("b");
+    value.textContent = formatter.format(row.count);
+
+    const share = document.createElement("span");
+    share.className = "split-share";
+    share.textContent = ` ${((row.count / total) * 100).toFixed(1)}%`;
+
+    key.append(dot, label, value, share);
+    return key;
+  });
+
+  elements.resolvedSplitBar.replaceChildren(...bar);
+  elements.resolvedSplitKeys.replaceChildren(...keys);
+
+  const strict = payload?.totals?.resolvedStrict ?? 0;
+  elements.resolvedInfo.title =
+    `Resolved counts every ticket Kapture marks Complete (${formatter.format(total)}). `
+    + `Only ${formatter.format(strict)} carry substatus "Resolved" — the rest are Closed or Replied.`;
 }
 
 function metricSourceLabel(payload, field) {

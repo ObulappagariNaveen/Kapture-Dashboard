@@ -659,7 +659,10 @@ async function fetchKaptureStatusTickets(config, range, status) {
   const cacheKey = getStatusCacheKey(config, statusRange, status);
   const cached = statusCache.get(cacheKey);
 
-  if (cached && Date.now() - cached.createdAt < CACHE_TTL_MS) {
+  // An empty hit is never served from cache: Kapture returns an empty completed
+  // set intermittently, and memoizing that zero blanks out every resolution for
+  // the whole TTL. Every other cache read below already guards on .length.
+  if (cached && cached.tickets.length && Date.now() - cached.createdAt < CACHE_TTL_MS) {
     return cached.tickets;
   }
 
@@ -700,7 +703,9 @@ async function fetchKaptureStatusTickets(config, range, status) {
     }
   }
 
-  statusCache.set(cacheKey, { createdAt: Date.now(), tickets });
+  // Deliberately not cached: an empty result here means every retry and both
+  // cache tiers came up short, which is far more likely to be a flaky upstream
+  // than a genuinely empty range. Storing it would serve 0 until the TTL ran out.
   return tickets;
 }
 
@@ -1163,6 +1168,7 @@ function summarizeTickets(tickets, range) {
   const teammateDailyCounts = new Map();
   const resolvedPriorityCounts = new Map();
   const completedByCounts = new Map();
+  const resolvedSubstatusCounts = new Map();
 
   for (const ticket of tickets) {
     const createdDay = parseKaptureDateKey(ticket.date);
@@ -1189,6 +1195,7 @@ function summarizeTickets(tickets, range) {
       const completedBy = getCompleterName(ticket);
       completedTickets.push({ ...ticket, completedByName: completedBy });
       incrementCompletedBy(completedByCounts, completedBy);
+      incrementSubstatus(resolvedSubstatusCounts, ticket.substatus);
     }
 
     if (attemptedDay && dailyMap.has(attemptedDay)) {
@@ -1229,6 +1236,9 @@ function summarizeTickets(tickets, range) {
     resolved: daily.reduce((sum, item) => sum + item.resolved, 0),
     pending: pendingTickets.length,
     endBacklog: daily.at(-1)?.openBacklog || 0,
+    // "resolved" above is every Complete ticket. resolvedStrict counts only the
+    // ones Kapture marks substatus=Resolved, i.e. excluding Closed and Replied.
+    resolvedStrict: strictResolvedCount(resolvedSubstatusCounts),
   };
 
   createdTickets.sort((a, b) => (parseKaptureTime(b.date) || 0) - (parseKaptureTime(a.date) || 0));
@@ -1246,7 +1256,31 @@ function summarizeTickets(tickets, range) {
     pendingTickets,
     completedTickets,
     completedByTeammate: completedByRows(completedByCounts),
+    resolvedBySubstatus: substatusRows(resolvedSubstatusCounts),
   };
+}
+
+function normalizeSubstatus(value) {
+  return String(value || "").trim() || "Unspecified";
+}
+
+function incrementSubstatus(map, value) {
+  const key = normalizeSubstatus(value);
+  map.set(key, (map.get(key) || 0) + 1);
+}
+
+function substatusRows(map) {
+  return [...map.entries()]
+    .map(([substatus, count]) => ({ substatus, count }))
+    .sort((a, b) => b.count - a.count || a.substatus.localeCompare(b.substatus));
+}
+
+function strictResolvedCount(map) {
+  let total = 0;
+  for (const [substatus, count] of map) {
+    if (substatus.toLowerCase() === "resolved") total += count;
+  }
+  return total;
 }
 
 function applyPerformanceTotals(summary, performanceTotals, range) {

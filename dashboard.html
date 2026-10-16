@@ -130,8 +130,15 @@
           </div>
         </article>
         <article class="stat-tile" data-series="2">
-          <span class="stat-label">Resolved</span>
+          <span class="stat-label">
+            Resolved
+            <button class="info-dot" type="button" id="resolvedInfo" aria-label="What counts as resolved">i</button>
+          </span>
           <span class="stat-value" id="resolvedMetric">0</span>
+          <div class="resolved-split" id="resolvedSplit" hidden>
+            <div class="split-bar" id="resolvedSplitBar" role="img" aria-label="Resolved tickets by substatus"></div>
+            <div class="split-keys" id="resolvedSplitKeys"></div>
+          </div>
           <div class="stat-foot">
             <span class="stat-help" id="resolvedMetricHelp">using taskEnddate</span>
             <svg class="spark" id="resolvedSpark" viewBox="0 0 84 30" preserveAspectRatio="none" aria-hidden="true"></svg>
